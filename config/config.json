@@ -1,0 +1,150 @@
+{
+    "properties": {
+        "gatewayServiceUrl": "https://paz.barclays-poc.com:8443"
+    },
+    "handler": {
+        "type": "Chain",
+        "config": {
+            "filters": [
+                "CaptureCorrelationId"
+            ],
+            "handler": "_router"
+        }
+    },
+    "heap": [
+        {
+            "name": "capture",
+            "type": "CaptureDecorator",
+            "config": {
+                "captureEntity": true,
+                "_captureContext": true
+            }
+        },
+        {
+            "name": "_router",
+            "type": "Router",
+            "config": {
+                "directory": "${openig.configDirectory}/routes"
+            }
+        },
+        {
+            "name": "CaptureCorrelationId",
+            "type": "AssignmentFilter",
+            "config": {
+                "onRequest": [
+                    {
+                        "target": "${attributes['corrId']}",
+                        "value": "${request.headers['X-Correlation-ID'] != null ? request.headers['X-Correlation-ID'][0] : (request.headers['x-correlation-id'] != null ? request.headers['x-correlation-id'][0] : null)}"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "ReverseProxyHandler",
+            "type": "ReverseProxyHandler",
+            "config": {
+                "soTimeout": "20 seconds"
+            }
+        },
+        {
+            "name": "SystemAndEnvSecretStore-1",
+            "type": "SystemAndEnvSecretStore",
+            "config": {
+                "format": "PLAIN"
+            }
+        },
+        {
+            "name": "McpSidebandTrustManager",
+            "type": "TrustAllManager"
+        },
+        {
+            "name": "McpSidebandTlsOptions",
+            "type": "ClientTlsOptions",
+            "config": {
+                "trustManager": "McpSidebandTrustManager"
+            }
+        },
+        {
+            "name": "MCPPingAuthorizeFilter",
+            "type": "PingAuthorizeFilter",
+            "config": {
+                "gatewayServiceUri": "&{gatewayServiceUrl}",
+                "secretsProvider": "SystemAndEnvSecretStore-1",
+                "gatewayCredentialSecretId": "GTSECRET",
+                "accessToken": "${request.headers['authorization'] != null && request.headers['authorization'][0].startsWith('Bearer ') ? request.headers['authorization'][0].substring(7) : (request.headers['Authorization'] != null && request.headers['Authorization'][0].startsWith('Bearer ') ? request.headers['Authorization'][0].substring(7) : null)}",
+                "includeBodyContentTypes": [
+                    "application/json",
+                    "application/json-rpc",
+                    "application/json-rpc; charset=utf-8"
+                ],
+                "sidebandHandler": {
+                    "type": "Chain",
+                    "config": {
+                        "filters": [
+                            {
+                                "type": "HeaderFilter",
+                                "config": {
+                                    "messageType": "REQUEST",
+                                    "add": {
+                                        "X-Correlation-ID": [
+                                            "${attributes['corrId']}"
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        "handler": {
+                            "type": "ClientHandler",
+                            "capture": "all",
+                            "config": {
+                                "tls": "McpSidebandTlsOptions"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "AuditService",
+            "type": "AuditService",
+            "config": {
+                "config": {
+                    "filterPolicies": {
+                        "field": {
+                            "includeIf": [
+                                "/access/http/request/headers/x-correlation-id"
+                            ]
+                        }
+                    }
+                },
+                "eventHandlers": [
+                    {
+                        "class": "org.forgerock.audit.handlers.json.JsonAuditEventHandler",
+                        "config": {
+                            "name": "json",
+                            "logDirectory": "&{ig.instance.dir}/audit",
+                            "topics": [
+                                "access",
+                                "mcp"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "McpAuditFilter",
+            "type": "McpAuditFilter",
+            "config": {
+                "auditService": "AuditService"
+            }
+        },
+        {
+            "name": "McpValidationFilter",
+            "type": "McpValidationFilter",
+            "config": {
+                "acceptedOrigins": ".*"
+            }
+        }
+    ]
+}

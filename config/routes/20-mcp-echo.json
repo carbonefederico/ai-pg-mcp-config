@@ -1,0 +1,31 @@
+{
+    "name": "mcp-passthrough",
+    "condition": "${find(request.uri.path, '^/mcp-echo-server')}",
+    "properties": {
+        "mcpServerUrl": "https://mcpplaygroundonline.com"
+    },
+    "baseURI": "&{mcpServerUrl}",
+    "handler": {
+        "type": "Chain",
+        "capture": "all",
+        "config": {
+            "filters": [
+                "McpAuditFilter",
+                {
+                    "type": "HeaderFilter",
+                    "config": {
+                        "messageType": "REQUEST",
+                        "replace": {
+                            "host": [
+                                "mcpplaygroundonline.com"
+                            ]
+                        }
+                    }
+                },
+                "McpValidationFilter",
+                "MCPPingAuthorizeFilter"
+            ],
+            "handler": "ReverseProxyHandler"
+        }
+    }
+}

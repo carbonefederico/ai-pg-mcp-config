@@ -1,0 +1,47 @@
+{
+    "heap": [
+        {
+            "name": "SecretsKeyManager-1",
+            "type": "SecretsKeyManager",
+            "config": {
+                "signingSecretId": "gateway.tls.key",
+                "secretsProvider": {
+                    "type": "KeyStoreSecretStore",
+                    "config": {
+                        "file": "&{ig.instance.dir}/config/keystore.p12",
+                        "storePasswordSecretId": "PINGGATEWAYKEYSTOREPASSWORD",
+                        "storeType": "PKCS12",
+                        "secretsProvider": {
+                            "type": "SystemAndEnvSecretStore",
+                            "config": {
+                                "format": "PLAIN"
+                            }
+                        },
+                        "mappings": [
+                            {
+                                "secretId": "gateway.tls.key",
+                                "aliases": [
+                                    "ig"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ],
+    "connectors": [
+        {
+            "port": 8080
+        },
+        {
+            "port": 6443,
+            "tls": {
+                "type": "ServerTlsOptions",
+                "config": {
+                    "keyManager": "SecretsKeyManager-1"
+                }
+            }
+        }
+    ]
+}

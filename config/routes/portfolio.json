@@ -1,0 +1,39 @@
+{
+  "name": "portfolio",
+  "condition": "${find(request.uri.path, '^/mcp/portfolio')}",
+  "properties": {
+    "mcpServerUrl": "https://demo-mcp-ten.vercel.app"
+  },
+  "baseURI": "&{mcpServerUrl}",
+  "handler": {
+    "type": "Chain",
+    "capture": "all",
+    "config": {
+      "filters": [
+        "McpAuditFilter",
+        "McpValidationFilter",
+        "MCPPingAuthorizeFilter",
+        {
+          "type": "UriPathRewriteFilter",
+          "config": {
+            "mappings": {
+              "/mcp/portfolio": "/mcp/portfolio"
+            }
+          }
+        },
+        {
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "replace": {
+              "host": [
+                "demo-mcp-ten.vercel.app"
+              ]
+            }
+          }
+        }
+      ],
+      "handler": "ReverseProxyHandler"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "products",
+  "condition": "${find(request.uri.path, '^/mcp/products')}",
+  "properties": {
+    "mcpServerUrl": "https://demo-mcp-ten.vercel.app"
+  },
+  "baseURI": "&{mcpServerUrl}",
+  "handler": {
+    "type": "Chain",
+    "capture": "all",
+    "config": {
+      "filters": [
+        "McpAuditFilter",
+        "McpValidationFilter",
+        "MCPPingAuthorizeFilter",
+        {
+          "type": "UriPathRewriteFilter",
+          "config": {
+            "mappings": {
+              "/mcp/products": "/mcp/products"
+            }
+          }
+        },
+        {
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "replace": {
+              "host": [
+                "demo-mcp-ten.vercel.app"
+              ]
+            }
+          }
+        }
+      ],
+      "handler": "ReverseProxyHandler"
+    }
+  }
+}
